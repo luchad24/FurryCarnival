@@ -31,7 +31,20 @@ $(document).ready(() => {
     let this_departure = '';
     let this_arrival = '';
     let this_time = '';
+    let this_flight = '';
+    let this_instance = '';
+    let this_plane= '';
+    let this_seat= '';
 
+
+    $(document).on('click','#logout',function () {
+        $.ajax(root_url+"sessions/", {
+            type:'DELETE',
+            success: () =>{
+                location.reload();
+            }
+        })
+    });
     $(document).on('click', '.delete', function(){
         let ticket_id  = $(this).attr('ticket_id');
         $.ajax(root_url+"tickets/"+ticket_id,{
@@ -74,7 +87,9 @@ $(document).ready(() => {
 
     $(document).on('click', '.time', function() {
         this_time = $(this).attr;
-        let flight = $(this).attr('flight');
+
+        this_flight = $(this).attr('flight');
+        this_instance = $(this).attr('instance');
         console.log("flight:");
         $(this).addClass('active');
         let button = $("#bookbutton");
@@ -83,21 +98,17 @@ $(document).ready(() => {
         //$('.book_button').append("<button type='button' class='button to_seat' flight ='"+flight+"'>Choose Seat</button>");
     });
 
-    $(document).on('click', '.to_seat', function(){
-        let flight = $(this).attr('flight');
-        build_seat(flight);
-    });
     //I CHANGED THIS!!
     $(document).on('click', '#seat', function() {
-        let seat = $(this).attr('seat_id');
-        console.log("seat"+seat);
+        this_seat = $(this).attr('seat_id');
+        this_plane = $(this).attr('plane_id');
+        console.log("seat"+this_seat);
         $('.seated-button').empty();
-        $('.seated-button').append("<button class ='seated' seat_id ='" + seat+ "'>BOOK NOW</button>");
+        $('.seated-button').append("<button class ='seated' seat_id ='" + this_seat+ "'>BOOK NOW</button>");
     });
 
     $(document).on('click', '.seated', function(){
-        let seat = $(this).attr('seat_id');
-        build_ticket_interface(seat);
+        build_ticket_interface(this_seat, this_instance);
     });
 
     $(document).on('click', '.back_departure', function() {
@@ -125,26 +136,6 @@ $(document).ready(() => {
         $('#gohome').addClass('active');
         build_home();
     });
-    // Search stuff
-    // $(document).on('keyup','#dep_search', function () {
-    //     $(".noresults").remove();
-    //     let departures = $('.departure');
-    //     let query = $(this).val().toUpperCase();
-    //     if(query.length > 0){
-    //         let matched = departures.filter(function () {
-    //             return $(this).text().toUpperCase().includes(query);
-    //         }).show();
-    //         let unmatched = departures.filter(function () {
-    //             return !$(this).text().toUpperCase().includes(query);
-    //         }).hide();
-    //         if (matched.length === 0){
-    //            // $(".departure-list").append("<a class=\'noresults list-group-item list-group-item-action\'>No results</a>");
-    //         }
-    //
-    //     }else{
-    //         departures.each().show();
-    //     }
-    // });
     $(document).on('keyup','#dep_search',function () {
         let query = $(this).val().toUpperCase();
         let list = $(".departure");
@@ -156,7 +147,7 @@ $(document).ready(() => {
         search_filter(list, query);
     });
     $(document).on('click','#bookbutton',function () {
-        build_seat();
+        build_seat(this_flight);
     })
 
     $(document).on('click', '.cabinbox', function(){
@@ -174,6 +165,14 @@ $(document).ready(() => {
         }else{
             seat_filter_hide(box);
         }
+    })
+
+    $(document).on('click', '#confirm', function(){
+        $('.purchase').show();
+    })
+    $(document).on('click', '.purchase', function(){
+        let email = $('#email_confirm').val();
+        purchase(email, this_seat+this_instance);
     })
 
 });
@@ -208,8 +207,63 @@ let seat_filter_hide = function(box){
     });
 }
 
+let purchase = function(email, code){
 
+    let itinerary_id= '';
+    $.ajax(root_url+'itineraries',{
+        type:'POST',
+        data: {
+            "itinerary": {
+                "confirmation_code": code,
+                "email": email
+            }
+        },
+        xhrFields: {withCredentials: true},
+        success: (itinerary) =>{
+            itinerary_id = itinerary.id;
+        }
+    })
+    console.log(itinerary_id);
 
+    $.ajax(root_url + "tickets",
+        {
+            type: 'GET',
+            xhrFields: {withCredentials: true},
+            success: (tickets) => {
+                for (let i=0; i<tickets.length; i++) {
+                    if(!tickets[i].is_purchased) {
+                        $.ajax(root_url+"tickets/"+tickets[i].id,{
+                            type: 'PATCH',
+                            dataType: "json",
+                            data: {
+                                "ticket": {
+                                    "is_purchased": 1,
+                                    "itinerary_id": itinerary_id
+                            }},
+                            xhrFields: {withCredentials: true},
+                            success:(tickets2) =>{
+                                console.log(tickets2.first_name+"'s ticket purchased");
+                            }
+                        })
+                        $.ajax(root_url+"seats/"+tickets[i].seat_id, {
+                            type: 'PATCH',
+                            dataType: "json",
+                            data: {
+                                "seat":{
+                                    "info": "reserved"
+                                }
+                            },
+                            xhrFields: {withCredentials: true},
+                            success:()=>{
+                                console.log(tickets[i].first_name+"'s seat reserved");
+                            }
+                        })
+                    }
+                }
+            }
+        });
+    build_your_tickets();
+}
 
 let search_filter = function(list, query){
     query = query.toUpperCase();
@@ -217,7 +271,6 @@ let search_filter = function(list, query){
         let matched = list.filter(function () {
             return $(this).text().toUpperCase().includes(query);
         }).show();
-
         let unmatched = list.filter(function () {
             return !$(this).text().toUpperCase().includes(query);
         }).hide();
@@ -246,7 +299,7 @@ let build_home = function(){
         "      <li id='yourtix'><a hfref='#'>Your Tickets</a></li>\n" +
         "    </ul>\n" +
         "    <ul class=\"nav navbar-nav navbar-right\">\n" +
-        "      <li><a href=\"#\"><span class=\"glyphicon glyphicon-log-in\"></span> Logout</a></li>\n" +
+        "      <li><a id='logout'><span class=\"glyphicon glyphicon-log-in\"></span> Logout</a></li>\n" +
         "    </ul>\n" +
         "  </div>\n" +
         "</nav>");
@@ -275,21 +328,30 @@ let build_home = function(){
 let build_your_tickets = function () {
     let pagebody = $('#pagebody');
     pagebody.empty();
-    pagebody.append("<h2>Tickets Already Booked</h2>");
-    let ticket_list = $("<ul id='ticket_list'></ul>");
-    pagebody.append(ticket_list);
+    pagebody.append("<div class='blk d-inline-block'><h2>Tickets Already Booked</h2><ul id='ticket_list_booked'></ul></div>");
+    pagebody.append("<div class='blk d-inline-block'><h2>Shopping Cart</h2><ul id='ticket_list_cart'></ul></div>")
+    let ticket_list = $("#ticket_list_booked");
+    let cart_list = $("#ticket_list_cart");
     $.ajax(root_url + "tickets",
         {
             type: 'GET',
             xhrFields: {withCredentials: true},
             success: (tickets) => {
                 for (let i=0; i<tickets.length; i++) {
-                    ticket_list.append("<li>" + tickets[i].first_name +" " +tickets[i].last_name+"</li><button " +
-                        "class='delete' id='"+tickets[i].id+"'>Cancel Ticket</button>");
+                    if(tickets[i].is_purchased) {
+                        ticket_list.append("<div>Itinerary:" +tickets[i].itinerary_id+"</div><li class='list-group-item'>Name:"+ tickets[i].first_name + " " + tickets[i].last_name + "</li><button ");
+                    }else{
+                        cart_list.append("<li class='list-group-item'>Name" + tickets[i].first_name + " " + tickets[i].last_name + "</li><button " +
+                            "class='delete' id='" + tickets[i].id + "'>Cancel Ticket</button>");
+                    }
                 }
             }
         });
 
+    pagebody.append("<div id ='email'>Email:<input id='email_confirm' type='text'><br>" +
+        "<button id='confirm'>Confirm Email</button></div>");
+    pagebody.append("<button class='purchase'>PURCHASE</button>")
+    $('.purchase').hide();
 };
 
 let build_departure = function(){
@@ -376,18 +438,32 @@ let build_time = function(departure, arrival) {
         xhrFields: {withCredentials: true},
         success: (flights) => {
             for (let i = 0; i < flights.length; i++) {
-                let raw_depart = flights[i].departs_at;
-                // let dep_date = raw_depart.split("T")[0];
-                // let dep_year = dep_date.split('-')[0]
-                // let dep_day = dep_date.split("-")[1];
-                // let dep_month = dep_date.split("-")[2];
+                $.ajax(root_url + "instances?filter[flight_id]="+flights[i].id, {
+                        dataType: "json",
+                        type: "GET",
+                        xhrFields: {withCredentials: true},
+                        success: (instances) => {
+                            for(let j = 0; j <instances.length; j++) {
+                                let raw_date = instances[j].date;
+                                let raw_depart = flights[i].departs_at;
+                                let dep_time = raw_depart.split("T")[1];
+                                let dep_hour = dep_time.split(":")[0];
+                                let dep_minute = dep_time.split(":")[1];
+                                let raw_arr = flights[i].arrives_at;
+                                let arr_time = raw_arr.split("T")[1];
+                                let arr_hour = arr_time.split(":")[0];
+                                let arr_minute = arr_time.split(":")[1];
+                                if(!instances[j].is_cancelled){ time_list.append("<a class='time list-group-item list-group-item-action' flight ='" + flights[i].id + "'" +
+                                    "instance='"+instances[j].id+"'><span class=\"glyphicon glyphicon-calendar\"></span>" +
+                                    raw_date + "<br>Departs at: " + dep_hour+":"+dep_minute + " Arrives at: "+ arr_hour+":"+arr_minute+
+                                    "</a>")}
 
-                let dep_time = raw_depart.split("T")[1];
+                            }
+                        }
+                    }
+                );
 
-                time_list.append("<a class='time list-group-item list-group-item-action' flight ='"+flights[i].id+"'" +
-                    "><span class=\"glyphicon glyphicon-calendar\"></span>" +
-                    "Departs at: " + dep_time + " Arrives at: "+ flights[i].arrives_at+
-                    "</a>")
+
             }
         }
     })
@@ -395,22 +471,8 @@ let build_time = function(departure, arrival) {
 
 let build_seat = function(flight){
     console.log(flight);
-    let body = $('body');
+    let body = $('#pagebody');
     body.empty();
-    body.append("<nav class=\"navbar navbar-inverse\">\n" +
-        "  <div class=\"container-fluid\">\n" +
-        "    <div class=\"navbar-header\">\n" +
-        "      <a class=\"navbar-brand\" href=\"#\">Furry Carnival</a>\n" +
-        "    </div>\n" +
-        "    <ul class=\"nav navbar-nav\" id='tabbar'>\n" +
-        "      <li class=\"active\" id='gohome'><a href=\"#\">Home</a></li>\n" +
-        "      <li id='yourtix'><a href='#'>Your Tickets</a></li>\n" +
-        "    </ul>\n" +
-        "    <ul class=\"nav navbar-nav navbar-right\">\n" +
-        "      <li><a href=\"#\"><span class=\"glyphicon glyphicon-log-in\"></span> Logout</a></li>\n" +
-        "    </ul>\n" +
-        "  </div>\n" +
-        "</nav>");
     body.append("<h1>Pick A Seat</h1>");
     body.append("<div id='pagebody'></div>");
     let pagebody = $('#pagebody');
@@ -433,13 +495,25 @@ let build_seat = function(flight){
     let seat_list= $(".seats-list");
     let seatlist= $("<ul id='seat_list'></ul>");
 
+    $.ajax(root_url+"flights/"+flight,{
+        type:'GET',
+        xhrFields: {withCredentials: true},
+        success: (flights) =>{
+            $('#seat_list').attr("plane_id", flights.plane_id);
+        }
+    })
+    let plane_id = $('#plane_id').attr('plane_id');
+    if(plane_id == undefined){
+        plane_id = 14362;
+    }
+    console.log(plane_id);
 
-    $.ajax(root_url+'seats?filter[plane_id]='+14366, {
+    $.ajax(root_url+'seats?filter[plane_id]='+plane_id, {
         type: 'GET',
         xhrFields: {withCredentials: true},
         success: (seats) => {
             for (let i = 0; i < seats.length; i++) {
-                let this_seat= $("<a href='#'class= 'set list-group-item list-group-item-action "+seats[i].cabin+"' id='seat' seat_id='"
+                let this_seat= $("<a href='#'plane_id ='"+plane_id+"' class= 'set list-group-item list-group-item-action "+seats[i].cabin+"' id='seat' seat_id='"
                     + seats[i].id + "' class=''>Seat:" + seats[i].row + seats[i].number +"</a>");
                 if(seats[i].is_window){
                     this_seat.addClass("window");
@@ -458,24 +532,10 @@ let build_seat = function(flight){
     seat_list.append(seatlist);
 };
 
-let build_ticket_interface = function(seat) {
-    let body = $('body');
-
+let build_ticket_interface = function(seat, inst) {
+    let body = $('#pagebody');
+    console.log(seat);
     body.empty();
-    body.append("<nav class=\"navbar navbar-inverse\">\n" +
-        "  <div class=\"container-fluid\">\n" +
-        "    <div class=\"navbar-header\">\n" +
-        "      <a class=\"navbar-brand\" href=\"#\">Furry Carnival</a>\n" +
-        "    </div>\n" +
-        "    <ul class=\"nav navbar-nav\" id='tabbar'>\n" +
-        "      <li class=\"active\" id='gohome'><a href=\"#\">Home</a></li>\n" +
-        "      <li id='yourtix'><a hfref='#'>Your Tickets</a></li>\n" +
-        "    </ul>\n" +
-        "    <ul class=\"nav navbar-nav navbar-right\">\n" +
-        "      <li><a href=\"#\"><span class=\"glyphicon glyphicon-log-in\"></span> Logout</a></li>\n" +
-        "    </ul>\n" +
-        "  </div>\n" +
-        "</nav>");
     body.append("<h2>Book Your Ticket</h2>")
 
 
@@ -504,9 +564,9 @@ let build_ticket_interface = function(seat) {
                     "last_name": ticket_lastname,
                     "age": ticket_age,
                     "gender": ticket_gender,
-                    "is_purchased": true,
+                    "is_purchased": false,
                     "price_paid": "290.11",
-                    "instance_id": 8,
+                    "instance_id": inst,
                     "seat_id": seat
                 }
             },
