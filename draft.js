@@ -1,4 +1,5 @@
-var root_url = "http://comp426.cs.unc.edu:3001/";
+
+let root_url = "http://comp426.cs.unc.edu:3001/";
 
 $(document).ready(() => {
     $('#login_btn').on('click', () => {
@@ -27,6 +28,10 @@ $(document).ready(() => {
                 }
             });
     });
+    let this_departure = '';
+    let this_arrival = '';
+    let this_time = '';
+
     $(document).on('click', '.delete', function(){
         let ticket_id  = $(this).attr('ticket_id');
         $.ajax(root_url+"tickets/"+ticket_id,{
@@ -41,23 +46,41 @@ $(document).ready(() => {
         build_departure();
     });
     $(document).on('click', '.departure', function() {
-        let departure = $(this).attr('depart_id');
-        console.log(departure);
-        build_arrival(departure);
+        this_departure = $(this).attr('depart_id');
+        this_arrival = '';
+        this_time = '';
+        let button = $("#bookbutton");
+        button.addClass("disabled");
+        button.removeClass("active");
+        $('.time-list').empty();
+        $(".departure").removeClass('active');
+        $(this).addClass('active');
+        console.log(this_departure);
+        build_arrival(this_departure);
     });
 
     $(document).on('click', '.arrival', function() {
-        let arrival = $(this).attr('arrive_id');
-        let departure = $(this).attr('depart_id');
-        console.log(arrival);
-        build_time(departure, arrival);
+        this_arrival = $(this).attr('arrive_id');
+        this_time = '';
+
+        let button = $("#bookbutton");
+        button.addClass("disabled");
+        button.removeClass("active");
+        $('.arrival').removeClass('active');
+        $(this).addClass('active');
+        console.log(this_arrival);
+        build_time(this_departure, this_arrival);
     });
 
     $(document).on('click', '.time', function() {
+        this_time = $(this).attr;
         let flight = $(this).attr('flight');
-        console.log("flight:"+flight);
-        $(".book_button").empty();
-        $('.book_button').append("<button class='to_seat' flight ='"+flight+"'>Choose Seat</button>");
+        console.log("flight:");
+        $(this).addClass('active');
+        let button = $("#bookbutton");
+        button.removeClass("disabled");
+        button.addClass("active");
+        //$('.book_button').append("<button type='button' class='button to_seat' flight ='"+flight+"'>Choose Seat</button>");
     });
 
     $(document).on('click', '.to_seat', function(){
@@ -101,13 +124,118 @@ $(document).ready(() => {
         $('#yourtix').removeClass('active');
         $('#gohome').addClass('active');
         build_home();
+    });
+    // Search stuff
+    // $(document).on('keyup','#dep_search', function () {
+    //     $(".noresults").remove();
+    //     let departures = $('.departure');
+    //     let query = $(this).val().toUpperCase();
+    //     if(query.length > 0){
+    //         let matched = departures.filter(function () {
+    //             return $(this).text().toUpperCase().includes(query);
+    //         }).show();
+    //         let unmatched = departures.filter(function () {
+    //             return !$(this).text().toUpperCase().includes(query);
+    //         }).hide();
+    //         if (matched.length === 0){
+    //            // $(".departure-list").append("<a class=\'noresults list-group-item list-group-item-action\'>No results</a>");
+    //         }
+    //
+    //     }else{
+    //         departures.each().show();
+    //     }
+    // });
+    $(document).on('keyup','#dep_search',function () {
+        let query = $(this).val().toUpperCase();
+        let list = $(".departure");
+        search_filter(list, query);
+    });
+    $(document).on('keyup','#arr_search',function () {
+        let query = $(this).val().toUpperCase();
+        let list = $(".arrival");
+        search_filter(list, query);
+    });
+    $(document).on('click','#bookbutton',function () {
+        build_seat();
+    })
+
+    $(document).on('click', '.cabinbox', function(){
+        box = $(this).attr('box');
+        if($(this).is(':checked')){
+            checkbox_filter_show(box);
+        }else{
+            checkbox_filter_hide(box);
+        }
+    })
+    $(document).on('click', '.seatbox', function(){
+        box = $(this).attr('box');
+        if($(this).is(':checked')){
+            seat_filter_show(box);
+        }else{
+            seat_filter_hide(box);
+        }
     })
 
 });
 
-var build_home = function(){
-    var body = $('body');
+let checkbox_filter_show = function(box){
+    $('.set').each(function(){
+        if($(this).attr('class').includes(box)){
+            $(this).show();
+        }
+        });
+}
+let checkbox_filter_hide = function(box){
+    $('.set').each(function(){
+        if($(this).attr('class').includes(box)){
+            $(this).hide();
+        }
+    });
+}
+
+let seat_filter_show = function(box){
+    $('.set').each(function(){
+        if($(this).attr('class').includes(box)){
+            $(this).removeClass('disabled');
+        }
+    });
+}
+let seat_filter_hide = function(box){
+    $('.set').each(function(){
+        if($(this).attr('class').includes(box)){
+            $(this).addClass('disabled');
+        }
+    });
+}
+
+
+
+
+let search_filter = function(list, query){
+    query = query.toUpperCase();
+    if(query.length > 0){
+        let matched = list.filter(function () {
+            return $(this).text().toUpperCase().includes(query);
+        }).show();
+
+        let unmatched = list.filter(function () {
+            return !$(this).text().toUpperCase().includes(query);
+        }).hide();
+        if (matched.length === 0){
+            // $(".departure-list").append("<a class=\'noresults list-group-item list-group-item-action\'>No results</a>");
+        }
+
+    }else{
+        list.each(function () {
+            $(this).show();
+        });
+    };
+};
+
+let build_home = function(){
+    let body = $('body');
     body.empty();
+    body.css('background-image','url("backgrnd.jpg")');
     body.append("<nav class=\"navbar navbar-inverse\">\n" +
         "  <div class=\"container-fluid\">\n" +
         "    <div class=\"navbar-header\">\n" +
@@ -125,7 +253,7 @@ var build_home = function(){
     body.append("<div id='pagebody'></div>");
     let pagebody = $('#pagebody');
     //pagebody.append("<button class='book'>Book Another Flight</button>");
-    pagebody.append("<div class='d-inline-block dep blk'><h2>where from</h2><!-- Search form -->\n" +
+    pagebody.append("<div class='blocksblock' ><div class='d-inline-block dep blk'><h2>where from</h2><!-- Search form -->\n" +
         "<input id='dep_search' class=\'form-control\' type=\'text\' placeholder=\'Search\' aria-label=\'Search\'>" +
         "<div class='searchlist dep-list'></div></div>" +
 
@@ -133,10 +261,13 @@ var build_home = function(){
         "<!-- Search form --><input id='arr_search' class=\'form-control\' type=\'text\' placeholder=\'Search\' aria-label=\'Search\'>" +
         "<div class='searchlist arr-list'></div></div>"+
 
-        "<div class='d-inline-block tme blk'><h2>when</h2>"+
+        "<div class='d-inline-block tim blk'><h2>when</h2>"+
         "<!-- Search form --><input id='time_search' class=\'form-control\' type=\'text\' placeholder=\'Search\' aria-label=\'Search\'>" +
-        "<div class='searchlist time-list'></div></div>" +
-        "<div class='book_button'></div>");
+        "<div class='searchlist time-list'></div>" +
+        // "<div class='book_button'><<button type=\"button\" class=\"btn btn-lg btn-primary disabled" id='bookbutton'" +
+        // " >Book Tickets Now</button></div></div>");>
+        "<button type='button' class='btn btn-lg btn-primary disabled' id='bookbutton'>Book Tickets Now</button></div></div>");
+
     build_departure();
 
 };
@@ -161,10 +292,9 @@ let build_your_tickets = function () {
 
 };
 
-var build_departure = function(){
+let build_departure = function(){
     let body =$('.dep-list');
     body.empty();
-    $(".book_button").empty();
     // body.append("<h1>Depart From?</h1>")
     // body.append("<button class='back_departure'><-back</button>")
     let departure_list = $("<ul class='list-group' id='departure_list'></ul>");
@@ -183,8 +313,8 @@ var build_departure = function(){
                         type: 'GET',
                         xhrFields: {withCredentials: true},
                         success: (airports) => {
-                            departure_list.append("<a href='#' class='departure list-group-item list-group-item-action' " +
-                                "depart_id='" + airports.id + "' >" + airports.name + "</a>");
+                            departure_list.append("<a class='departure list-group-item list-group-item-action' " +
+                                "\depart_id='" + airports.id + "' ><span class=\"glyphicon glyphicon-plane\"></span>" + airports.name + "</a>");
                             departure_list.append()
                         }
                     })
@@ -194,15 +324,15 @@ var build_departure = function(){
         }
     });
 
-}
+};
 
-var build_arrival = function(departure){
+let build_arrival = function(departure){
     let body = $('.arr-list');
     body.empty();
-    $(".book_button").empty();
+    //$(".book_button").empty();
     //body.append("<h1>Arrive?</h1>");
     //body.append("<button class='back_arrival'><-back</button>")
-    let arrival_list = $("<ul id='arrival_list'></ul>");
+    let arrival_list = $("<ul class='list-group' id='arrival_list'></ul>");
     body.append(arrival_list);
 
     $.ajax(root_url +"flights?filter[departure_id]="+departure,{
@@ -218,7 +348,8 @@ var build_arrival = function(departure){
                         xhrFields: {withCredentials: true},
                         success: (airports) => {
                             arrival_list.append("<a href='#' class='arrival list-group-item list-group-item-action' " +
-                                "depart_id='"+departure+"'arrive_id='" + airports.id + "' >" + airports.name + "</a>");
+                                "depart_id='"+departure+"'arrive_id='" + airports.id + "' ><span class=\"glyphicon " +
+                                "glyphicon-plane\"></span>" + airports.name + "</a>");
 
                         }
                     })
@@ -231,13 +362,13 @@ var build_arrival = function(departure){
 };
 
 
-var build_time = function(departure, arrival) {
+let build_time = function(departure, arrival) {
     let body = $('.time-list');
     body.empty();
-    $(".book_button").empty();
+    //$(".book_button").empty();
     // body.append("<h1>TIME?</h1>");
     // body.append("<button class='back_time' departure='"+departure+"'><-back</button>")
-    let time_list = $("<ul id='time_list'></ul>");
+    let time_list = $("<ul class='list-group' id='time_list'></ul>");
     body.append(time_list);
 
     $.ajax(root_url +"flights?filter[departure_id]="+departure+"&filter[arrival_id]="+arrival, {
@@ -245,14 +376,24 @@ var build_time = function(departure, arrival) {
         xhrFields: {withCredentials: true},
         success: (flights) => {
             for (let i = 0; i < flights.length; i++) {
-                time_list.append("<a href='#'class= 'time list-group-item list-group-item-action' flight ='"+flights[i].plane_id+"'>Departs at: " + flights[i].departs_at + " Arrives at: "+ flights[i].arrives_at+
-                "</a>")
+                let raw_depart = flights[i].departs_at;
+                // let dep_date = raw_depart.split("T")[0];
+                // let dep_year = dep_date.split('-')[0]
+                // let dep_day = dep_date.split("-")[1];
+                // let dep_month = dep_date.split("-")[2];
+
+                let dep_time = raw_depart.split("T")[1];
+
+                time_list.append("<a class='time list-group-item list-group-item-action' flight ='"+flights[i].id+"'" +
+                    "><span class=\"glyphicon glyphicon-calendar\"></span>" +
+                    "Departs at: " + dep_time + " Arrives at: "+ flights[i].arrives_at+
+                    "</a>")
             }
         }
     })
-}
+};
 
-var build_seat = function(flight){
+let build_seat = function(flight){
     console.log(flight);
     let body = $('body');
     body.empty();
@@ -273,7 +414,16 @@ var build_seat = function(flight){
     body.append("<h1>Pick A Seat</h1>");
     body.append("<div id='pagebody'></div>");
     let pagebody = $('#pagebody');
-    pagebody.append("<div class='d-inline-block seats blk'><h2>Available Seats</h2>" +
+    pagebody.append("<div class='checkboxes'><h2>Cabin?</h2><div class='cabin_list'>" +
+        "Premium<input type='checkbox' box= 'Premium' class='premium_check cabinbox' checked> " +
+        "First<input type='checkbox' box='First' class='cabinbox first_check' checked>" +
+        " Business<input type='checkbox' box='Business' class='business_check cabinbox' checked> " +
+        "Economy<input type='checkbox' box='Economy' class='cabinbox economy_check' checked></div>" +
+        "<a href='https://www.youtube.com/watch?v=U4rwlvMEoj0&t=6s'>Three Deep in the Window</a><div class='seat_attr'>" +
+        "Window Seat?<input type='checkbox' box='window' class='window_check seatbox' checked>" +
+        "Aisle Seat?<input type='checkbox' box='aisle' class='aisle_check seatbox' checked>" +
+        "Exit Seat?<input type='checkbox' box='exit' class='exit_check seatbox' checked></div></div>" +
+        "<div class='d-inline-block seats blk'><h2>Available Seats</h2>" +
         // "<!-- Search form -->\n" +
         // "<input id='dep_search' class=\'form-control\' type=\'text\' placeholder=\'Search\' aria-label=\'Search\'>" +
         "<div class='searchlist seats-list'></div></div>" +
@@ -281,34 +431,34 @@ var build_seat = function(flight){
         "<div class='seated-button'></div>");
 
     let seat_list= $(".seats-list");
-    let seatlist= $("<ul id='search_list'></ul>");
+    let seatlist= $("<ul id='seat_list'></ul>");
 
 
-    $.ajax(root_url+'seats?filter[plane_id]='+14373, {
+    $.ajax(root_url+'seats?filter[plane_id]='+14366, {
         type: 'GET',
         xhrFields: {withCredentials: true},
         success: (seats) => {
             for (let i = 0; i < seats.length; i++) {
-                let this_seat= $("<a href='#'class= 'time list-group-item list-group-item-action "+seats[i].cabin+"' id='seat' seat_id='"
+                let this_seat= $("<a href='#'class= 'set list-group-item list-group-item-action "+seats[i].cabin+"' id='seat' seat_id='"
                     + seats[i].id + "' class=''>Seat:" + seats[i].row + seats[i].number +"</a>");
-                    if(seats[i].is_window){
-                        this_seat.addClass("window");
-                    }
-                    if(seats[i].is_aisle ){
-                        this_seat.addClass("aisle");
-                    }
-                    if(seats[i].is_exit){
-                        this_seat.addClass("exit")
-                    }
+                if(seats[i].is_window){
+                    this_seat.addClass("window");
+                }
+                if(seats[i].is_aisle ){
+                    this_seat.addClass("aisle");
+                }
+                if(seats[i].is_exit){
+                    this_seat.addClass("exit")
+                }
                 seatlist.append(this_seat);
 
             }
         }
-    })
+    });
     seat_list.append(seatlist);
-}
+};
 
-var build_ticket_interface = function(seat) {
+let build_ticket_interface = function(seat) {
     let body = $('body');
 
     body.empty();
@@ -370,7 +520,7 @@ var build_ticket_interface = function(seat) {
 }
 
 
-var build_airlines_interface = function() {
+let build_airlines_interface = function() {
     let body = $('body');
 
     body.empty();
