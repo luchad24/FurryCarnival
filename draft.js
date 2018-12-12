@@ -1,6 +1,18 @@
 
 let root_url = "http://comp426.cs.unc.edu:3001/";
 
+let this_departure = '';
+let this_arrival = '';
+let this_instance = '';
+let this_plane= '';
+let this_flight = '';
+let this_seat = '';
+let format_seat = ''
+let dep_code = '';
+let arr_code = '';
+let dep_time = '';
+let arr_time = '';
+let date = '';
 $(document).ready(() => {
     $('#login_btn').on('click', () => {
 
@@ -28,13 +40,7 @@ $(document).ready(() => {
                 }
             });
     });
-    let this_departure = '';
-    let this_arrival = '';
-    let this_time = '';
-    let this_flight = '';
-    let this_instance = '';
-    let this_plane= '';
-    let this_seat= '';
+
 
 
     $(document).on('click','#logout',function () {
@@ -51,7 +57,7 @@ $(document).ready(() => {
             type: 'DELETE',
             xhrFields: {withCredentials: true},
             success: () =>{
-                build_home();
+                build_your_tickets();
             }
         })
     });
@@ -60,6 +66,7 @@ $(document).ready(() => {
     });
     $(document).on('click', '.departure', function() {
         this_departure = $(this).attr('depart_id');
+        dep_code = $(this).attr('dep_code');
         this_arrival = '';
         this_time = '';
         let button = $("#bookbutton");
@@ -75,7 +82,7 @@ $(document).ready(() => {
     $(document).on('click', '.arrival', function() {
         this_arrival = $(this).attr('arrive_id');
         this_time = '';
-
+        arr_code = $(this).attr('arr_code');
         let button = $("#bookbutton");
         button.addClass("disabled");
         button.removeClass("active");
@@ -86,8 +93,10 @@ $(document).ready(() => {
     });
 
     $(document).on('click', '.time', function() {
-        this_time = $(this).attr;
-
+        //this_time = $(this).attr();
+        date = $(this).attr('date');
+        dep_time = $(this).attr('deptime');
+        arr_time = $(this).attr('arrtime');
         this_flight = $(this).attr('flight');
         this_instance = $(this).attr('instance');
         console.log("flight:");
@@ -99,17 +108,28 @@ $(document).ready(() => {
     });
 
     //I CHANGED THIS!!
-    $(document).on('click', '#seat', function() {
+    $(document).on('click', '.seatchosen', function() {
         this_seat = $(this).attr('seat_id');
         this_plane = $(this).attr('plane_id');
         console.log("seat"+this_seat);
-        $('.seated-button').empty();
-        $('.seated-button').append("<button class ='seated' seat_id ='" + this_seat+ "'>BOOK NOW</button>");
+
+        let button = $("#seatbutton");
+        $('.seatchosen').removeClass('active');
+        $(this).addClass('active');
+        this_seat = $(this).attr('seat');
+        button.removeClass("disabled");
+        button.addClass("active");
+        // $('.seated-button').empty();
+        // $('.seated-button').append("<button class ='seated' seat_id ='" + seat+ "'>BOOK NOW</button>");
+    });
+    $(document).on('click','#seatbutton',function () {
+        build_ticket_interface(this_seat);
     });
 
-    $(document).on('click', '.seated', function(){
-        build_ticket_interface(this_seat, this_instance);
-    });
+    // $(document).on('click', '.seated', function(){
+    //     let seat = $(this).attr('seat_id');
+    //     build_ticket_interface(seat);
+    // });
 
     $(document).on('click', '.back_departure', function() {
         build_home();
@@ -286,6 +306,12 @@ let search_filter = function(list, query){
 };
 
 let build_home = function(){
+    this_departure = '';
+    this_arrival = '';
+    this_time = '';
+    this_flight = '';
+    this_instance = '';
+    this_seat = '';
     let body = $('body');
     body.empty();
     body.css('background-image','url("backgrnd.jpg")');
@@ -376,7 +402,8 @@ let build_departure = function(){
                         xhrFields: {withCredentials: true},
                         success: (airports) => {
                             departure_list.append("<a class='departure list-group-item list-group-item-action' " +
-                                "\depart_id='" + airports.id + "' ><span class=\"glyphicon glyphicon-plane\"></span>" + airports.name + "</a>");
+                                "\depart_id='" + airports.id + "'dep_code='" +airports.code +
+                                "' ><span class=\"glyphicon glyphicon-plane\"></span>" + airports.name + "</a>");
                             departure_list.append()
                         }
                     })
@@ -410,7 +437,8 @@ let build_arrival = function(departure){
                         xhrFields: {withCredentials: true},
                         success: (airports) => {
                             arrival_list.append("<a href='#' class='arrival list-group-item list-group-item-action' " +
-                                "depart_id='"+departure+"'arrive_id='" + airports.id + "' ><span class=\"glyphicon " +
+                                "depart_id='"+departure+"'arrive_id='" + airports.id + "' arr_code='"+airports.code+"' >" +
+                                "<span class=\"glyphicon " +
                                 "glyphicon-plane\"></span>" + airports.name + "</a>");
 
                         }
@@ -449,13 +477,17 @@ let build_time = function(departure, arrival) {
                                 let dep_time = raw_depart.split("T")[1];
                                 let dep_hour = dep_time.split(":")[0];
                                 let dep_minute = dep_time.split(":")[1];
+                                let format_dep_time = dep_hour+":"+dep_minute;
+
                                 let raw_arr = flights[i].arrives_at;
                                 let arr_time = raw_arr.split("T")[1];
                                 let arr_hour = arr_time.split(":")[0];
                                 let arr_minute = arr_time.split(":")[1];
+                                let format_arr_time = arr_hour+":"+arr_minute;
                                 if(!instances[j].is_cancelled){ time_list.append("<a class='time list-group-item list-group-item-action' flight ='" + flights[i].id + "'" +
-                                    "instance='"+instances[j].id+"'><span class=\"glyphicon glyphicon-calendar\"></span>" +
-                                    raw_date + "<br>Departs at: " + dep_hour+":"+dep_minute + " Arrives at: "+ arr_hour+":"+arr_minute+
+                                    "instance='"+instances[j].id+"'date='"+raw_date+"'deptime='"+format_dep_time+"' arrtime='"+format_arr_time+"'>" +
+                                    "<span class=\"glyphicon glyphicon-calendar\"></span>" +
+                                    raw_date + "<br>Departs at: " + format_dep_time + " Arrives at: "+ format_arr_time+
                                     "</a>")}
 
                             }
@@ -476,24 +508,39 @@ let build_seat = function(flight){
     body.append("<h1>Pick A Seat</h1>");
     body.append("<div id='pagebody'></div>");
     let pagebody = $('#pagebody');
-    pagebody.append("<div class='checkboxes'><h2>Cabin?</h2><div class='cabin_list'>" +
-        "Premium<input type='checkbox' box= 'Premium' class='premium_check cabinbox' checked> " +
-        "First<input type='checkbox' box='First' class='cabinbox first_check' checked>" +
-        " Business<input type='checkbox' box='Business' class='business_check cabinbox' checked> " +
-        "Economy<input type='checkbox' box='Economy' class='cabinbox economy_check' checked></div>" +
-        "<a href='https://www.youtube.com/watch?v=U4rwlvMEoj0&t=6s'>Three Deep in the Window</a><div class='seat_attr'>" +
-        "Window Seat?<input type='checkbox' box='window' class='window_check seatbox' checked>" +
-        "Aisle Seat?<input type='checkbox' box='aisle' class='aisle_check seatbox' checked>" +
-        "Exit Seat?<input type='checkbox' box='exit' class='exit_check seatbox' checked></div></div>" +
-        "<div class='d-inline-block seats blk'><h2>Available Seats</h2>" +
+    pagebody.append("<div class='d-inline-block seatselect blk' id='seatselect'><h1>Pick A Seat</h1><br><div class='checkboxes'><h3>Search Seats</h3><div class='cabin_list'>" +
+        "<div class='form-check form-check-inline'>" +
+        "<input type='checkbox' box= 'Premium' class='form-check-input premium_check cabinbox' checked> " +
+        "<label class=\"form-check-label\" for=\"inlineCheckbox1\">Premium</label></div>"+
+        "<div class='form-check form-check-inline'>" +
+        "<input type='checkbox' box='First' class='form-check-input cabinbox first_check' checked>" +
+        "<label class=\"form-check-label\" for=\"inlineCheckbox2\">First Class</label></div>"+
+        "<div class='form-check form-check-inline'>" +
+        "<input type='checkbox' box='Business' class='form-check-input business_check cabinbox' checked> " +
+        "<label class=\"form-check-label\" for=\"inlineCheckbox3\">Business Class</label></div>"+
+        "<div class='form-check form-check-inline'>" +
+        "<input type='checkbox' box='Economy' class='form-check-input cabinbox economy_check' checked>" +
+        "<label class=\"form-check-label\" for=\"inlineCheckbox4\">Economy</label></div>"+
+        //"<a href='https://www.youtube.com/watch?v=U4rwlvMEoj0&t=6s'>Three Deep in the Window</a><div class='form-check seat_attr'>" +
+        "<div class='form-check form-check-inline'>" +
+        "<input type='checkbox' box='window' class='form-check-input window_check seatbox' checked>" +
+        "<label class=\"form-check-label\" for=\"inlineCheckbox5\">Window Seat</label></div>"+
+        "<div class='form-check form-check-inline'>" +
+        "<input type='checkbox' box='aisle' class='form-check-input aisle_check seatbox' checked>" +
+        "<label class=\"form-check-label\" for=\"inlineCheckbox6\">Aisle Seat</label></div>"+
+        "<div class='form-check form-check-inline'>" +
+        "<input type='checkbox' box='exit' class='form-check-input exit_check seatbox' checked>" +
+        "<label class=\"form-check-label\" for=\"inlineCheckbox7\">Exit Seat</label></div></div></div></div>"+
+        "<div class='d-inline-block seatcontainer blk' id='seatdiv'><h2>Available Seats</h2>" +
         // "<!-- Search form -->\n" +
         // "<input id='dep_search' class=\'form-control\' type=\'text\' placeholder=\'Search\' aria-label=\'Search\'>" +
-        "<div class='searchlist seats-list'></div></div>" +
+        "<div class='searchlist seats-list'></div><button type='button' class='btn btn-lg btn-primary disabled' id='seatbutton'>Confirm Tickets</button></div>"
 
-        "<div class='seated-button'></div>");
+        // "<div class='seated-button'></div>"
+    );
 
     let seat_list= $(".seats-list");
-    let seatlist= $("<ul id='seat_list'></ul>");
+    let seatlist= $("<ul class='list-group' id='seat_list'></ul>");
 
     $.ajax(root_url+"flights/"+flight,{
         type:'GET',
@@ -513,8 +560,9 @@ let build_seat = function(flight){
         xhrFields: {withCredentials: true},
         success: (seats) => {
             for (let i = 0; i < seats.length; i++) {
-                let this_seat= $("<a href='#'plane_id ='"+plane_id+"' class= 'set list-group-item list-group-item-action "+seats[i].cabin+"' id='seat' seat_id='"
-                    + seats[i].id + "' class=''>Seat:" + seats[i].row + seats[i].number +"</a>");
+                format_seat = seats[i].row + seats[i].number
+                let this_seat= $("<a class= 'seatchosen set list-group-item list-group-item-action "+seats[i].cabin+"' id='seat' seat_id='"
+                    + seats[i].id + " seat='"+format_seat+"'>Seat: " + format_seat+"</a>");
                 if(seats[i].is_window){
                     this_seat.addClass("window");
                 }
@@ -536,17 +584,13 @@ let build_ticket_interface = function(seat, inst) {
     let body = $('#pagebody');
     console.log(seat);
     body.empty();
-    body.append("<h2>Book Your Ticket</h2>")
-
-
-    let ticket_add_div = $("<div>First Name: <input id='new_ticket_firstname' type='text'><br></div>" +
-        "<div> Middle Name: <input id='new_ticket_middlename' type='text'><br></div>"+
-        "<div> Last Name: <input id='new_ticket_lastname' type='text'><br></div>"+
-        "<div> Age: <input id='new_ticket_age' type='number'><br></div>"+
-        "<div> Gender: <input id='new_ticket_gender' type='text'><br></div>"+
-        "<button id='make_ticket'>Create</button>");
-
-    body.append(ticket_add_div);
+    body.append("<div class='d-inline-block ticketselect blk' id='ticketselect'><h2>Book Your Ticket</h2>" +
+        "<form><div class='form-group'><label for=\"fname\">First Name</label><br><input id='new_ticket_firstname' type='text'><br></div>" +
+        "<div class='form-group'><label for=\"mname\">Middle Name</label><br><input id='new_ticket_middlename' type='text'><br></div>"+
+        "<div class='form-group'><label for=\"lname\">Last Name</label><br><input id='new_ticket_lastname' type='text'><br></div>"+
+        "<div class='form-group'><label for=\"g\">Age</label><br><input id='new_ticket_age' type='number'><br></div>"+
+        "<div class='form-group'><label for=\"genderisntreal\">Gender</label><br><input id='new_ticket_gender' type='text'><br></div></form>"+
+        "<button class='btn btn-lg btn-primary' id='make_ticket'>Create</button></div>");
 
     $('#make_ticket').on('click', () => {
         let ticket_firstname = $('#new_ticket_firstname').val();
@@ -554,6 +598,7 @@ let build_ticket_interface = function(seat, inst) {
         let ticket_middlename = $('#new_ticket_middlename').val();
         let ticket_age = $('#new_ticket_age').val();
         let ticket_gender = $('#new_ticket_gender').val();
+        let info_string = date + " " + dep_code+" "+dep_time+" "+arr_code+" "+arr_time+" "+format_seat;
 
         $.ajax(root_url + "tickets", {
             type: 'POST',
@@ -566,8 +611,9 @@ let build_ticket_interface = function(seat, inst) {
                     "gender": ticket_gender,
                     "is_purchased": false,
                     "price_paid": "290.11",
-                    "instance_id": inst,
-                    "seat_id": seat
+                    "instance_id": this_instance,
+                    "seat_id": this_seat,
+                    "info": info_string
                 }
             },
             xhrFields: {withCredentials: true},
